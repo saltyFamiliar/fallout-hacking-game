@@ -22,8 +22,7 @@ int main()
     cbreak();
 
     // Loop, updating screen based on input until exit key is pressed
-    bool LOOP = true;
-    while (LOOP) {
+    while (true) {
         // Cursor position
         int y, x;
         getyx(stdscr, y, x);
@@ -43,12 +42,14 @@ int main()
         case 'l':
             move(y, x + 1);
             break;
+        case 'q':
+            goto exit_loop;
         }
         
         refresh();
     }
+    exit_loop: ;
 
-    refresh();
     // End ncurses
     endwin();
 
