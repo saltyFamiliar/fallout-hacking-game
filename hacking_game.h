@@ -63,7 +63,8 @@ class Puzzle {
             tries_left_ = config.tries;
             tries_ = config.tries;
 
-            SetStatus(UpdateResult::kOk);
+            status_ = std::to_string(tries_) + "/" + std::to_string(tries_) +
+            " tries left.";
 
             word_map_ = CreateWordMap();
             char_grid_ = GenerateContent();
@@ -106,6 +107,7 @@ class Puzzle {
             if (word_map_.count(cursor.y_)) {
                 if (word_map_[cursor.y_].pos.x_ == cursor.x_) {
                     Word selected = word_map_[cursor.y_];
+                    last_selected_ = selected.chars;
 
                     if (selected.chars == password_)
                         return SetStatus(UpdateResult::kWin);
@@ -136,6 +138,7 @@ class Puzzle {
         int grid_width_;
         std::string password_;
         std::map<int, Word> word_map_;
+        std::string last_selected_;
 
         std::vector<std::string> wordList = {
             "rads",
@@ -218,7 +221,9 @@ class Puzzle {
         int SetStatus(UpdateResult result) {
             switch (result) {
                 case UpdateResult::kOk:
-                    status_ = "Tries left: " +
+                    status_ = std::to_string(Authenticate(last_selected_)) + 
+                    "/" + std::to_string(password_.length()) +
+                    " letters correct.\nTries left: " +
                     std::to_string(tries_left_) + "/" + std::to_string(tries_);
                     return 0;
                 case UpdateResult::kWin:
@@ -231,5 +236,13 @@ class Puzzle {
                     status_ = "How'd you get here?";
                     return 0;
             }
+        }
+
+        int Authenticate(std::string selected) {
+            int matching_letters = 0;
+            for (int i = 0; i < password_.length(); ++i)
+                matching_letters += (password_[i] == selected[i]);
+            
+            return matching_letters;
         }
 };
