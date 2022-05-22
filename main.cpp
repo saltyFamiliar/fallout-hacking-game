@@ -3,17 +3,22 @@
 #include "hacking_game.h"
 #include <string>
 
-void PrintFormatted(std::vector<std::string> contents) {
-    if (contents.size() == 1) {
-        printw(contents[0].c_str());
+void PrintFormatted(ViewContent contents) {
+    if (contents.char_grid.size() == 1) {
+        printw(contents.char_grid[0].c_str());
     } else {
-        printw(contents[0].c_str());
+        printw(contents.char_grid[0].c_str());
         attron(COLOR_PAIR(1));
-        printw(contents[1].c_str());
+        printw(contents.char_grid[1].c_str());
         attroff(COLOR_PAIR(1));
-        printw(contents[2].c_str());
+        printw(contents.char_grid[2].c_str());
     }
+    printw(contents.status.c_str());
 }
+
+#define WIDTH 20
+#define HEIGHT 10
+#define TRIES 4
 
 int main() { 
     // Start ncurses window
@@ -25,18 +30,20 @@ int main() {
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
 
-    // Sample content
-    auto puzzle = Puzzle();
+    Config config = {HEIGHT, WIDTH, 4};
 
-    CursorPos cursor = {0, 0};
+    // Sample content
+    auto puzzle = Puzzle(config);
+
+    auto cursor = Position(0, 0);
 
     // Move cursor to start
-    move(cursor.y_pos, cursor.x_pos);
+    move(cursor.y_, cursor.x_);
 
     // Display puzzle initial contents
-    std::vector<std::string> contents = puzzle.View(cursor);
+    ViewContent contents = puzzle.View(cursor);
     PrintFormatted(contents);
-    move(cursor.y_pos, cursor.x_pos);
+    move(cursor.y_, cursor.x_);
 
 
     // Update changes to window
@@ -53,16 +60,19 @@ int main() {
         // Match input and update cursor
         switch (ch) {
         case 'k':
-            cursor.y_pos = std::max(0, cursor.y_pos - 1);
+            cursor.y_ = std::max(0, cursor.y_ - 1);
             break;
         case 'j':
-            cursor.y_pos = std::min(7, cursor.y_pos + 1);
+            cursor.y_ = std::min(HEIGHT - 1, cursor.y_+ 1);
             break;
         case 'h':
-            cursor.x_pos = std::max(0, cursor.x_pos - 1);
+            cursor.x_ = std::max(0, cursor.x_ - 1);
             break;
         case 'l':
-            cursor.x_pos = std::min(6, cursor.x_pos + 1);
+            cursor.x_ = std::min(WIDTH - 1, cursor.x_ + 1);
+            break;
+        case 'e':
+            puzzle.Update(cursor);
             break;
         case 'q':
             goto exit_loop;
@@ -72,7 +82,7 @@ int main() {
         contents = puzzle.View(cursor);
         move(0, 0);
         PrintFormatted(contents);
-        move(cursor.y_pos, cursor.x_pos);
+        move(cursor.y_, cursor.x_);
         refresh();
     }
     exit_loop: ;
