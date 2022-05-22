@@ -96,14 +96,29 @@ class Puzzle {
         }
 
         // Replaces word with dots if when selected and displays latest status
-        void Update(Position cursor) {
+        int Update(Position cursor) {
             if (word_map_.count(cursor.y_)) {
                 if (word_map_[cursor.y_].pos.x_ == cursor.x_) {
-                    word_map_[cursor.y_].chars == "....";
+                    Word selected = word_map_[cursor.y_];
+
+                    if (selected.chars == password_)
+                        return 1;
+                    
+                    std::string before_word = 
+                    char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
+
+                    std::string after_word =
+                    char_grid_.substr(selected.pos.LinearPos(grid_width_) + 4);
+
+                    char_grid_ = before_word + "...." + after_word;
+
+                    word_map_.erase(cursor.y_);
                 }
             }
             tries_left_ -= 1;
             SetStatus();
+
+            return 0;
         }
 
     private:
@@ -111,10 +126,10 @@ class Puzzle {
         std::string status_;
         int tries_left_;
         int tries_;
-        std::vector<std::string> words_in_puzzle_;
         const int max_word_count_ = 4;
         int grid_height_;
         int grid_width_;
+        std::string password_;
         std::map<int, Word> word_map_;
 
         std::vector<std::string> wordList = {
@@ -128,6 +143,7 @@ class Puzzle {
         // Returns map of line indexes to word structs
         std::map<int, Word> CreateWordMap() {
             std::map<int, Word> new_word_map;
+            std::vector<std::string> words_in_puzzle_;
             
             // Used to keep track of which lines have been assigned a Word
             std::vector<int> lines_used;
@@ -142,6 +158,9 @@ class Puzzle {
                 }
                 while (Contains(words_in_puzzle_, new_word));
                 words_in_puzzle_.push_back(new_word);
+
+                // Select last random word to be answer
+                password_ = new_word;
                 
                 int word_line_pos;
                 do {

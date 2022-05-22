@@ -53,6 +53,8 @@ int main() {
     noecho();
     cbreak();
 
+    int update_result;
+
     // Loop, updating screen based on input until exit key is pressed
     while (true) {
         int ch = getch();
@@ -72,7 +74,14 @@ int main() {
             cursor.x_ = std::min(WIDTH - 1, cursor.x_ + 1);
             break;
         case 'e':
-            puzzle.Update(cursor);
+            if (update_result = puzzle.Update(cursor)) {
+                clear();
+                printw("You win!");
+                refresh();
+                getch();
+                endwin();
+                return 0;
+            }
             break;
         case 'q':
             goto exit_loop;
