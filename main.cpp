@@ -4,16 +4,25 @@
 #include <string>
 
 void PrintFormatted(ViewContent contents) {
-    if (contents.char_grid.size() == 1) {
-        printw(contents.char_grid[0].c_str());
+    int y;
+    int x;
+    getyx(stdscr, y, x);
+    move(0, 0);
+    
+    clear();
+
+    if (contents.char_grid_sections.size() == 1) {
+        printw(contents.char_grid_sections[0].c_str());
     } else {
-        printw(contents.char_grid[0].c_str());
+        printw(contents.char_grid_sections[0].c_str());
         attron(COLOR_PAIR(1));
-        printw(contents.char_grid[1].c_str());
+        printw(contents.char_grid_sections[1].c_str());
         attroff(COLOR_PAIR(1));
-        printw(contents.char_grid[2].c_str());
+        printw(contents.char_grid_sections[2].c_str());
     }
     printw(contents.status.c_str());
+    move(y, x);
+    refresh();
 }
 
 #define WIDTH 20
@@ -53,7 +62,6 @@ int main() {
     noecho();
     cbreak();
 
-    int update_result;
 
     // Loop, updating screen based on input until exit key is pressed
     while (true) {
@@ -74,30 +82,22 @@ int main() {
             cursor.x_ = std::min(WIDTH - 1, cursor.x_ + 1);
             break;
         case 'e':
-            if (update_result = puzzle.Update(cursor)) {
-                clear();
-                printw("You win!");
-                refresh();
+            if (puzzle.Update(cursor)) {
+                contents = puzzle.View(cursor);
+                PrintFormatted(contents);
                 getch();
-                endwin();
-                return 0;
+            } else {
+                break;
             }
-            break;
         case 'q':
-            goto exit_loop;
+            endwin();
+            return 0;
         }
-        clear();
-        
-        contents = puzzle.View(cursor);
-        move(0, 0);
-        PrintFormatted(contents);
         move(cursor.y_, cursor.x_);
-        refresh();
+        contents = puzzle.View(cursor);
+        PrintFormatted(contents);
     }
-    exit_loop: ;
 
-    // End ncurses
-    endwin();
 
     return 0;
 }

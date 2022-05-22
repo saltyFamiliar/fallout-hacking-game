@@ -23,6 +23,12 @@ class Position {
         }
 };
 
+enum class UpdateResult {
+    kOk,
+    kLoss,
+    kWin
+};
+
 struct Word {
     std::string chars;
     Position pos = Position(0, 0);
@@ -35,7 +41,7 @@ struct Config {
 };
 
 struct ViewContent {
-    std::vector<std::string> char_grid;
+    std::vector<std::string> char_grid_sections;
     std::string status;
 };
 
@@ -57,7 +63,7 @@ class Puzzle {
             tries_left_ = config.tries;
             tries_ = config.tries;
 
-            SetStatus();
+            SetStatus(UpdateResult::kOk);
 
             word_map_ = CreateWordMap();
             char_grid_ = GenerateContent();
@@ -68,7 +74,7 @@ class Puzzle {
         // else returns chars before cursor, chars in word cursor is on, and 
         // chars after word cursor is on as three elements.
         ViewContent View(Position cursor) {
-            // If cursor is not on a Word, just return char_grid as vector
+            // If cursor is not on a Word, just return char_grid_sections as vector
             if (!word_map_.count(cursor.y_)) {
                 return {std::vector<std::string>{char_grid_}, status_};
             }
@@ -102,7 +108,7 @@ class Puzzle {
                     Word selected = word_map_[cursor.y_];
 
                     if (selected.chars == password_)
-                        return 1;
+                        return SetStatus(UpdateResult::kWin);
                     
                     std::string before_word = 
                     char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
@@ -115,10 +121,9 @@ class Puzzle {
                     word_map_.erase(cursor.y_);
                 }
             }
-            tries_left_ -= 1;
-            SetStatus();
+            if (--tries_left_ == 0) return SetStatus(UpdateResult::kLoss);
 
-            return 0;
+            return SetStatus(UpdateResult::kOk);
         }
 
     private:
@@ -126,7 +131,7 @@ class Puzzle {
         std::string status_;
         int tries_left_;
         int tries_;
-        const int max_word_count_ = 4;
+        const int kMaxWordCount_ = 4;
         int grid_height_;
         int grid_width_;
         std::string password_;
@@ -151,7 +156,7 @@ class Puzzle {
             srand(time(NULL));
 
             // Adds max_word_count_ unique Words to new_word_map
-            for (int i = 0; i < max_word_count_; ++i) {
+            for (int i = 0; i < kMaxWordCount_; ++i) {
                 std::string new_word;
                 do {
                     new_word = wordList[rand() % wordList.size()];
@@ -210,8 +215,21 @@ class Puzzle {
         }
 
         // Sets status_ according to tries left
-        void SetStatus() {
-            status_ = "Tries left: " +
-                std::to_string(tries_left_) + "/" + std::to_string(tries_);
+        int SetStatus(UpdateResult result) {
+            switch (result) {
+                case UpdateResult::kOk:
+                    status_ = "Tries left: " +
+                    std::to_string(tries_left_) + "/" + std::to_string(tries_);
+                    return 0;
+                case UpdateResult::kWin:
+                    status_ = "You win!";
+                    return 1;
+                case UpdateResult::kLoss:
+                    status_ = "You lose!";
+                    return 1;
+                default:
+                    status_ = "How'd you get here?";
+                    return 0;
+            }
         }
 };
