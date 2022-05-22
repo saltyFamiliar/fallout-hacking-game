@@ -3,16 +3,41 @@
 #include "hacking_game.h"
 #include <string>
 
-int main() 
-{ 
+void PrintFormatted(std::vector<std::string> contents) {
+    if (contents.size() == 1) {
+        printw(contents[0].c_str());
+    } else {
+        printw(contents[0].c_str());
+        attron(COLOR_PAIR(1));
+        printw(contents[1].c_str());
+        attroff(COLOR_PAIR(1));
+        printw(contents[2].c_str());
+    }
+}
+
+int main() { 
     // Start ncurses window
     initscr();
 
     // Print string at cursor
     printw("Hello post-apocalypse\n");
 
+    start_color();
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+
     // Sample content
-    printw(generate_content(16, 8).c_str());
+    auto puzzle = Puzzle();
+
+    CursorPos cursor = {0, 0};
+
+    // Move cursor to start
+    move(cursor.y_pos, cursor.x_pos);
+
+    // Display puzzle initial contents
+    std::vector<std::string> contents = puzzle.View(cursor);
+    PrintFormatted(contents);
+    move(cursor.y_pos, cursor.x_pos);
+
 
     // Update changes to window
     refresh();
@@ -23,29 +48,31 @@ int main()
 
     // Loop, updating screen based on input until exit key is pressed
     while (true) {
-        // Cursor position
-        int y, x;
-        getyx(stdscr, y, x);
-
         int ch = getch();
-        switch (ch)
-        {
+
+        // Match input and update cursor
+        switch (ch) {
         case 'k':
-            move(y - 1, x);
+            cursor.y_pos = std::max(0, cursor.y_pos - 1);
             break;
         case 'j':
-            move(y + 1, x);
+            cursor.y_pos = std::min(7, cursor.y_pos + 1);
             break;
         case 'h':
-            move(y, x - 1);
+            cursor.x_pos = std::max(0, cursor.x_pos - 1);
             break;
         case 'l':
-            move(y, x + 1);
+            cursor.x_pos = std::min(6, cursor.x_pos + 1);
             break;
         case 'q':
             goto exit_loop;
         }
+        clear();
         
+        contents = puzzle.View(cursor);
+        move(0, 0);
+        PrintFormatted(contents);
+        move(cursor.y_pos, cursor.x_pos);
         refresh();
     }
     exit_loop: ;
