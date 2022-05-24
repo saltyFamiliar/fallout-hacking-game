@@ -25,6 +25,7 @@ class Position {
 
 enum class UpdateResult {
     kOk,
+    kNoWord,
     kLoss,
     kWin
 };
@@ -56,7 +57,8 @@ bool Contains(std::vector<T> vec, T val) {
 
 class Puzzle {
     public:
-        // Initializes object's char_grid_ with random chars and Words.
+        // Initializes Puzzle according to Config given and 
+        // default status message. Calls CreateWordMap and GenerateContent.
         Puzzle(Config config) {
             grid_height_ = config.height;
             grid_width_ = config.width;
@@ -70,7 +72,7 @@ class Puzzle {
             char_grid_ = GenerateContent();
         }
 
-        // Returns a string vec to be handled and printed by ncurses. If cursor
+        // Returns ViewContent containing to be handled by ncurses. If cursor
         // is not on a word, returns whole char_grid_ as single element in vec,
         // else returns chars before cursor, chars in word cursor is on, and 
         // chars after word cursor is on as three elements.
@@ -84,7 +86,7 @@ class Puzzle {
                 return {std::vector<std::string>{char_grid_}, status_};
             }
 
-            // If cursor is on a Word, return:
+            // If cursor is on a Word, char_grid_sections are:
             // [chars before Word, Word, chars after Word]
             std::vector<std::string> result_vector;
             Word selected_word = word_map_[cursor.y_];
@@ -102,30 +104,32 @@ class Puzzle {
             return {result_vector, status_};
         }
 
-        // Replaces word with dots if when selected and displays latest status
-        int Update(Position cursor) {
-            if (word_map_.count(cursor.y_)) {
-                if (word_map_[cursor.y_].pos.x_ == cursor.x_) {
-                    Word selected = word_map_[cursor.y_];
-                    last_selected_ = selected.chars;
-
-                    if (selected.chars == password_)
-                        return SetStatus(UpdateResult::kWin);
-                    
-                    std::string before_word = 
-                    char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
-
-                    std::string after_word =
-                    char_grid_.substr(selected.pos.LinearPos(grid_width_) + 4);
-
-                    char_grid_ = before_word + "...." + after_word;
-
-                    word_map_.erase(cursor.y_);
-                }
-            }
+        // Called when user selects something. Changes properties of
+        // Puzzle if necessary and passes an UpdateResult to SetStatus.
+        bool Update(Position cursor) {
             if (--tries_left_ == 0) return SetStatus(UpdateResult::kLoss);
 
-            return SetStatus(UpdateResult::kOk);
+            if (word_map_.count(cursor.y_) && 
+            word_map_[cursor.y_].pos.x_ == cursor.x_) {
+                Word selected = word_map_[cursor.y_];
+                last_selected_ = selected.chars;
+                last_num_chars_matching_ = Authenticate(last_selected_);
+
+                if (last_num_chars_matching_ == password_.length())
+                    return SetStatus(UpdateResult::kWin);
+                
+                std::string before_word = 
+                char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
+                std::string after_word =
+                char_grid_.substr(selected.pos.LinearPos(grid_width_) + 4);
+                char_grid_ = before_word + "...." + after_word;
+
+                word_map_.erase(cursor.y_);
+
+                return SetStatus(UpdateResult::kOk);
+            } else {
+                return SetStatus(UpdateResult::kNoWord);
+            }
         }
 
     private:
@@ -139,6 +143,7 @@ class Puzzle {
         std::string password_;
         std::map<int, Word> word_map_;
         std::string last_selected_;
+        int last_num_chars_matching_;
 
         std::vector<std::string> wordList = {
             "rads",
@@ -217,27 +222,38 @@ class Puzzle {
             return content;
         }
 
-        // Sets status_ according to tries left
-        int SetStatus(UpdateResult result) {
+        // Sets status_ according to tries left. Returns true if game ending
+        // event occurred, else false.
+        bool SetStatus(UpdateResult result) {
             switch (result) {
                 case UpdateResult::kOk:
-                    status_ = std::to_string(Authenticate(last_selected_)) + 
+                    status_ = std::to_string(last_num_chars_matching_) + 
                     "/" + std::to_string(password_.length()) +
-                    " letters correct.\nTries left: " +
-                    std::to_string(tries_left_) + "/" + std::to_string(tries_);
-                    return 0;
+                    " letters correct.\n" + TriesLeftMsg();
+                    return false;
+                case UpdateResult::kNoWord:
+                    status_ = "Invalid password!\n" + TriesLeftMsg();
+                    return false;
                 case UpdateResult::kWin:
                     status_ = "You win!";
-                    return 1;
+                    return true;
                 case UpdateResult::kLoss:
                     status_ = "You lose!";
-                    return 1;
+                    return true;
                 default:
                     status_ = "How'd you get here?";
-                    return 0;
+                    return true;
             }
         }
 
+        // Returns msg string indication tries remaining for convenience.
+        std::string TriesLeftMsg() {
+            return "Tries left: " +
+                    std::to_string(tries_left_) + "/" + std::to_string(tries_);
+        }
+
+        // Returns the amount of letters (in the right place) in common with
+        // Puzzle's password.
         int Authenticate(std::string selected) {
             int matching_letters = 0;
             for (int i = 0; i < password_.length(); ++i)

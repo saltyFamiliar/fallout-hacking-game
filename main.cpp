@@ -20,6 +20,7 @@ void PrintFormatted(ViewContent contents) {
         attroff(COLOR_PAIR(1));
         printw(contents.char_grid_sections[2].c_str());
     }
+    printw("\n");
     printw(contents.status.c_str());
     move(y, x);
     refresh();
