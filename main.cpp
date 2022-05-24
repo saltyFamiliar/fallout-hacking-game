@@ -82,7 +82,7 @@ int main() {
         case 'l':
             cursor.x_ = std::min(WIDTH - 1, cursor.x_ + 1);
             break;
-        case 'e':
+        case '\n':
             if (puzzle.Update(cursor)) {
                 contents = puzzle.View(cursor);
                 PrintFormatted(contents);
