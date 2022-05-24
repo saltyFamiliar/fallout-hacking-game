@@ -235,10 +235,10 @@ class Puzzle {
                     status_ = "Invalid password!\n" + TriesLeftMsg();
                     return false;
                 case UpdateResult::kWin:
-                    status_ = "You win!";
+                    status_ = "Access granted.";
                     return true;
                 case UpdateResult::kLoss:
-                    status_ = "You lose!";
+                    status_ = "Access denied";
                     return true;
                 default:
                     status_ = "How'd you get here?";
