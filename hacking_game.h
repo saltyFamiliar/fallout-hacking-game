@@ -4,6 +4,8 @@
 #include <vector>
 #include <map>
 #include <ncurses.h>
+#include <fstream>
+#include <bits/stdc++.h>
 
 class Position {
     public:
@@ -39,6 +41,9 @@ struct Config {
     int height;
     int width;
     int tries;
+    int word_length;
+    int word_count;
+    std::string dict_file;
 };
 
 struct ViewContent {
@@ -58,18 +63,23 @@ bool Contains(std::vector<T> vec, T val) {
 class Puzzle {
     public:
         // Initializes Puzzle according to Config given and 
-        // default status message. Calls CreateWordMap and GenerateContent.
+        // default status message. Calls CreateWordMap, GenerateContent,
+        // and GenerateDictionary
         Puzzle(Config config) {
             grid_height_ = config.height;
             grid_width_ = config.width;
             tries_left_ = config.tries;
             tries_ = config.tries;
+            word_length_ = config.word_length;
+            max_word_count_ = config.word_count;
 
             status_ = std::to_string(tries_) + "/" + std::to_string(tries_) +
             " tries left.";
 
+            word_list_ = GenerateWordList(config.dict_file);
             word_map_ = CreateWordMap();
             char_grid_ = GenerateContent();
+
         }
 
         // Returns ViewContent containing to be handled by ncurses. If cursor
@@ -98,7 +108,9 @@ class Puzzle {
             result_vector.push_back(selected_word.chars);
             
             std::string after_word =
-            char_grid_.substr(selected_word.pos.LinearPos(grid_width_) + 4);
+            char_grid_.substr(
+                selected_word.pos.LinearPos(grid_width_) + word_length_
+                );
             result_vector.push_back(after_word);
 
             return {result_vector, status_};
@@ -121,8 +133,16 @@ class Puzzle {
                 std::string before_word = 
                 char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
                 std::string after_word =
-                char_grid_.substr(selected.pos.LinearPos(grid_width_) + 4);
-                char_grid_ = before_word + "...." + after_word;
+                char_grid_.substr(
+                    selected.pos.LinearPos(grid_width_) + word_length_);
+
+                // Replaces word after it is selected
+                std::string fill = "";
+                for(int i = 0; i < word_length_; ++i) {
+                    fill += ".";
+                }
+
+                char_grid_ = before_word + fill + after_word;
 
                 word_map_.erase(cursor.y_);
 
@@ -137,21 +157,67 @@ class Puzzle {
         std::string status_;
         int tries_left_;
         int tries_;
-        const int kMaxWordCount_ = 4;
+        int max_word_count_ = 4;
         int grid_height_;
         int grid_width_;
         std::string password_;
         std::map<int, Word> word_map_;
         std::string last_selected_;
         int last_num_chars_matching_;
+        int word_length_;
+        std::vector<std::string> word_list_;
 
-        std::vector<std::string> wordList = {
-            "rads",
-            "nuke",
-            "caps",
-            "chem",
-            "jazz"
-        };
+
+        // Generates list of 100 random words of appropriate length from 
+        // dictionary file.
+        std::vector<std::string> GenerateWordList(std::string dict_filename) {
+            std::ifstream dict_file(dict_filename);
+            std::string line;
+            std::vector<int> line_nums;
+            std::vector<std::string> word_list;
+
+            // Populate list of locations of words of right length
+            for(int lc = 0; getline(dict_file, line); ++lc) {
+                if (line.length() == word_length_) {
+                    line_nums.push_back(lc);
+                }
+            }
+            
+            // Clear ifstream's EOF and fail flags in order to reuse it and 
+            // seek to start of file
+            dict_file.clear();
+            dict_file.seekg(0);
+
+            srand(time(NULL));
+
+            // List of line numbers or words that will be in Puzzle
+            std::vector<int> word_list_lines;
+
+            // Get max_word_count_ number of random line indexes from
+            // line_nums.
+            for (int i = 0; i < max_word_count_; ++i) {
+                int ln;
+                do {
+                    ln = line_nums[rand() % line_nums.size()];
+                }while(Contains(word_list_lines, ln));
+                word_list_lines.push_back(ln);
+            }
+
+            std::sort(word_list_lines.begin(), word_list_lines.end());
+
+            // Iterate through lines in dict_file. When line number found
+            // in word_list_lines is encountered. Add line to word_list and
+            // remove first element from word_list_lines (since it is ordered)
+            // line numbers will be encountered in order.
+            for (int ln = 0; word_list_lines.size() > 0; ++ln) {
+                getline(dict_file, line);
+                if (ln == word_list_lines[0]) {
+                    word_list.push_back(line);
+                    word_list_lines.erase(word_list_lines.begin());
+                }
+            }
+            return word_list;
+        }
 
         // Returns map of line indexes to word structs
         std::map<int, Word> CreateWordMap() {
@@ -164,10 +230,10 @@ class Puzzle {
             srand(time(NULL));
 
             // Adds max_word_count_ unique Words to new_word_map
-            for (int i = 0; i < kMaxWordCount_; ++i) {
+            for (int i = 0; i < max_word_count_; ++i) {
                 std::string new_word;
                 do {
-                    new_word = wordList[rand() % wordList.size()];
+                    new_word = word_list_[rand() % word_list_.size()];
                 }
                 while (Contains(words_in_puzzle_, new_word));
                 words_in_puzzle_.push_back(new_word);
@@ -184,9 +250,12 @@ class Puzzle {
         
                 new_word_map[word_line_pos] = Word {
                     chars: new_word,
-                    pos: Position(word_line_pos, rand() % (grid_width_ - 4))
+                    pos: Position(
+                        word_line_pos, rand() % (grid_width_ - word_length_)
+                        )
                 };
             }
+
             return new_word_map;
         }
 
