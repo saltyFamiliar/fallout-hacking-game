@@ -3,6 +3,13 @@
 #include "hacking_game.h"
 #include <string>
 
+#define WIDTH 20
+#define HEIGHT 10
+#define TRIES 4
+#define WORD_LENGTH 5
+#define DICT_FILE "dict.txt"
+#define WORD_COUNT 6
+
 void PrintFormatted(ViewContent contents) {
     int y;
     int x;
@@ -26,9 +33,6 @@ void PrintFormatted(ViewContent contents) {
     refresh();
 }
 
-#define WIDTH 20
-#define HEIGHT 10
-#define TRIES 4
 
 int main() { 
     // Start ncurses window
@@ -40,7 +44,12 @@ int main() {
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
 
-    Config config = {HEIGHT, WIDTH, 4};
+    Config config = {HEIGHT, 
+                     WIDTH, 
+                     TRIES, 
+                     WORD_LENGTH,
+                     WORD_COUNT,
+                     DICT_FILE};
 
     // Sample content
     auto puzzle = Puzzle(config);
@@ -54,7 +63,6 @@ int main() {
     ViewContent contents = puzzle.View(cursor);
     PrintFormatted(contents);
     move(cursor.y_, cursor.x_);
-
 
     // Update changes to window
     refresh();
