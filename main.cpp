@@ -28,7 +28,10 @@ void PrintFormatted(ViewContent contents) {
         printw(contents.char_grid_sections[2].c_str());
     }
     printw("\n");
-    printw(contents.status.c_str());
+    for (int i = 0; i < contents.status_col.size(); ++i) {
+        move(HEIGHT - i, WIDTH + 2);
+        printw(contents.status_col[contents.status_col.size() - i - 1].c_str());
+    }
     move(y, x);
     refresh();
 }
