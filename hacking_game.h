@@ -49,6 +49,7 @@ struct Config {
 struct ViewContent {
     std::vector<std::string> char_grid_sections;
     std::vector<std::string> status_col;
+    int attempts_left;
 };
 
 // Checks if given vector contains value
@@ -73,27 +74,29 @@ class Puzzle {
             word_length_ = config.word_length;
             max_word_count_ = config.word_count;
 
-            status_col_.push_back(std::to_string(tries_) + "/" + std::to_string(tries_) +
-            " tries left.");
-
             word_list_ = GenerateWordList(config.dict_file);
             word_map_ = CreateWordMap();
             char_grid_ = GenerateContent();
-
         }
 
         // Returns ViewContent containing to be handled by ncurses. If cursor
         // is not on a word, returns whole char_grid_ as single element in vec,
         // else returns chars before cursor, chars in word cursor is on, and 
         // chars after word cursor is on as three elements.
-        ViewContent View(Position cursor) {
+        ViewContent View(Position cursor, Position offset)  {
+            cursor = Position(cursor.y_ - offset.y_, cursor.x_ - offset.x_);
+
             // If cursor is not on a Word, just return char_grid_sections as vector
             if (!word_map_.count(cursor.y_)) {
-                return {std::vector<std::string>{char_grid_}, status_col_};
+                return {std::vector<std::string>{char_grid_},
+                       status_col_,
+                       tries_left_};
             }
 
             if (cursor.x_ != word_map_[cursor.y_].pos.x_) {
-                return {std::vector<std::string>{char_grid_}, status_col_};
+                return {std::vector<std::string>{char_grid_}, 
+                        status_col_, 
+                        tries_left_};
             }
 
             // If cursor is on a Word, char_grid_sections are:
@@ -113,13 +116,16 @@ class Puzzle {
                 );
             result_vector.push_back(after_word);
 
-            return {result_vector, status_col_};
+            return {result_vector, 
+                    status_col_, 
+                    tries_left_};
         }
 
         // Called when user selects something. Changes properties of
         // Puzzle if necessary and passes an UpdateResult to Setstatus_col.
-        bool Update(Position cursor) {
-            if (--tries_left_ == 0) return Setstatus_col(UpdateResult::kLoss);
+        bool Update(Position cursor, Position offset) {
+            cursor = Position(cursor.y_ - offset.y_, cursor.x_ - offset.x_);
+            if (--tries_left_ == 0) return SetStatus(UpdateResult::kLoss);
 
             if (word_map_.count(cursor.y_) && 
             word_map_[cursor.y_].pos.x_ == cursor.x_) {
@@ -128,7 +134,7 @@ class Puzzle {
                 last_num_chars_matching_ = Authenticate(last_selected_);
 
                 if (last_num_chars_matching_ == password_.length())
-                    return Setstatus_col(UpdateResult::kWin);
+                    return SetStatus(UpdateResult::kWin);
                 
                 std::string before_word = 
                 char_grid_.substr(0, selected.pos.LinearPos(grid_width_));
@@ -146,9 +152,9 @@ class Puzzle {
 
                 word_map_.erase(cursor.y_);
 
-                return Setstatus_col(UpdateResult::kOk);
+                return SetStatus(UpdateResult::kOk);
             } else {
-                return Setstatus_col(UpdateResult::kNoWord);
+                return SetStatus(UpdateResult::kNoWord);
             }
         }
 
@@ -293,7 +299,7 @@ class Puzzle {
 
         // Sets status_col_ according to tries left. Returns true if game ending
         // event occurred, else false.
-        bool Setstatus_col(UpdateResult result) {
+        bool SetStatus(UpdateResult result) {
             switch (result) {
                 case UpdateResult::kOk:
                     status_col_.push_back(last_selected_);
@@ -302,30 +308,21 @@ class Puzzle {
                         "/" + 
                         std::to_string(password_.length()) + 
                         " correct.");
-                    status_col_.push_back(TriesLeftMsg());
                     return false;
                 case UpdateResult::kNoWord:
                     status_col_.push_back("Invalid password!");
-                    status_col_.push_back(TriesLeftMsg());
                     return false;
                 case UpdateResult::kWin:
                     status_col_.push_back("Access granted.");
                     return true;
                 case UpdateResult::kLoss:
+                    status_col_.push_back("Password was: " + password_);
                     status_col_.push_back("Access denied");
                     return true;
                 default:
                     status_col_.push_back("How'd you get here?");
                     return true;
             }
-        }
-
-        // Returns msg string indication tries remaining for convenience.
-        std::string TriesLeftMsg() {
-            return "Tries left: " +
-                    std::to_string(tries_left_) + 
-                    "/" +
-                    std::to_string(tries_);
         }
 
         // Returns the amount of letters (in the right place) in common with
